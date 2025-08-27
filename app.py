@@ -25,6 +25,7 @@ def get_sql_server_connection():
         f"DATABASE={database};"
         f"UID={username};"
         f"PWD={password};"
+        f"Encrypt={os.getenv('DB_ENCRYPT')};"
         "TrustServerCertificate=yes;"
     )
 
@@ -315,5 +316,6 @@ def export_tasks():
 if __name__ == '__main__':
     init_db()
     app.run(debug=True, port=80)
+
 
 

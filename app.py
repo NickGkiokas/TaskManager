@@ -14,7 +14,7 @@ app = Flask(__name__)
 def get_sql_server_connection():
     return pyodbc.connect(
         r'DRIVER={ODBC Driver 17 for SQL Server};'
-        r'SERVER=EKSRV\SQLEXPRESS;'
+        r'SERVER=62.38.20.250,1433;'
         r'DATABASE=ArrowAnalysis;'
         r'UID=ilyda;'
         r'PWD=6726200;'
@@ -306,3 +306,4 @@ def export_tasks():
 if __name__ == '__main__':
     init_db()
     app.run(debug=True, port=80)
+

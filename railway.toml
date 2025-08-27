@@ -1,0 +1,3 @@
+[build]
+builder = "NIXPACKS"
+nixpacksPkgs = ["msodbcsql17", "unixodbc", "unixodbc-dev"]

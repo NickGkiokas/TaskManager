@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Task Management{% endblock %}</title>
+  {% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% endblock %}
+</head>
+<body>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div style="flex: 1;"></div>
+    <h1 class="title-main" style="text-align: center; flex: 1; margin: 0;">Task Management</h1>
+    <div style="flex: 1; text-align: right;">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="E&K Strategies Logo" style="height: 50px;">
+    </div>
+  </div>
+
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

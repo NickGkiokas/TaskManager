@@ -1,0 +1,840 @@
+{% extends "base.html" %}
+{% block title %}Task Management{% endblock %}
+{% block head %}
+{{ super() }}
+<!-- Custom Modal -->
+<div id="customCategoryModal" class="modal">
+    <div class="modal-content">
+        <h3>Νέα Κατηγορία</h3>
+        <input type="text" id="custom_category_input" placeholder="Εισαγωγή νέας κατηγορίας" class="custom-input">
+        <div style="margin-top: 10px;">
+            <button class="button" onclick="submitCustomCategory()">ΟΚ</button>
+            <button class="button button-red" onclick="closeCustomCategoryModal()">Άκυρο</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Επιβεβαίωσης Διαγραφής -->
+<div id="confirmModal" class="modal">
+    <div class="modal-content">
+        <h3>Είστε σίγουροι ότι θέλετε να διαγράψετε αυτό το task;</h3>
+        <div style="margin-top: 10px;">
+            <button id="confirmBtn" class="button button-red">Ναι</button>
+            <button id="cancelBtn" class="button">Όχι</button>
+        </div>
+    </div>
+</div>
+
+
+<style>
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 2001;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+        background-color: #fff;
+        margin: 15% auto;
+        padding: 20px;
+        border-radius: 10px;
+        width: 300px;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+
+        .modal-content h3 {
+            margin-bottom: 15px;
+        }
+
+    .custom-input {
+        width: 100%;
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+    }
+
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: linear-gradient(135deg, #e5eaf4 0%, #f6f8fb 100%);
+    }
+
+    h1 {
+        color: #333;
+        text-align: center;
+    }
+
+    .task-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .task-card {
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        background-color: white;
+        border-radius: 8px;
+        padding: 10px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        cursor: pointer;
+    }
+
+        .task-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+    .task-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .task-title {
+        font-weight: bold;
+        font-size: 16px;
+    }
+
+    .task-client, .task-status {
+        margin-top: 4px;
+        font-size: 14px;
+    }
+
+        .task-status span {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: white;
+        }
+
+    .task-assigned, .task-comment {
+        font-size: 14px;
+        margin-top: 4px;
+        color: #444;
+    }
+
+    #taskForm label {
+        display: inline-block;
+        width: 160px;
+        margin-top: 8px;
+        vertical-align: top;
+        font-weight: bold;
+    }
+
+    #taskForm input,
+    #taskForm select,
+    #taskForm textarea {
+        width: calc(100% - 170px);
+        padding: 4px;
+        margin-top: 6px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+    }
+
+        #taskForm input[type="date"] {
+            width: 180px;
+        }
+
+    #taskForm button {
+        margin-top: 12px;
+        margin-right: 10px;
+    }
+
+    #filters form {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 10px;
+        margin-bottom: 20px;
+    }
+
+    #filters label {
+        font-weight: 500;
+        margin-right: 4px;
+        color: #333;
+    }
+
+    #filters select {
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 14px;
+        min-width: 140px;
+        background-color: #ccc;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+        /* Hover effect */
+        #filters select:hover {
+            border-color: #17a2b8;
+            box-shadow: 0 0 5px rgba(23, 162, 184, 0.4);
+            cursor: pointer;
+        }
+
+        /* Focus (click) effect */
+        #filters select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 6px rgba(0, 123, 255, 0.5);
+        }
+
+    #filterOverlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 999;
+    }
+
+    #filterPopup {
+        display: none;
+        position: fixed;
+        top: 10%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #fff;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        z-index: 1000;
+        width: 90%;
+        max-width: 500px;
+    }
+
+        #filterPopup form label {
+            display: block;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+
+        #filterPopup select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 4px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+    .Filed {
+        background-color: gray;
+    }
+
+    .InProgress {
+        background-color: orange;
+    }
+
+    .Testing {
+        background-color: rgb(90, 117, 255);
+    }
+
+    .Done {
+        background-color: rgb(9, 205, 9);
+    }
+
+    .stage-F {
+        background-color: gray;
+        color: white;
+        padding: 3px 6px;
+        border-radius: 4px;
+        margin-right: 4px;
+    }
+
+    .stage-I {
+        background-color: orange;
+        color: white;
+        padding: 3px 6px;
+        border-radius: 4px;
+        margin-right: 4px;
+    }
+
+    .stage-T {
+        background-color: rgb(90, 117, 255);
+        color: white;
+        padding: 3px 6px;
+        border-radius: 4px;
+        margin-right: 4px;
+    }
+
+    .stage-D {
+        background-color: rgb(9, 205, 9);
+        color: white;
+        padding: 3px 6px;
+        border-radius: 4px;
+        margin-right: 4px;
+    }
+
+    .task-details {
+        margin-top: 10px;
+        display: none;
+        border-top: 1px solid #ccc;
+        padding-top: 10px;
+    }
+
+    .task-card.active .task-details {
+        display: block;
+    }
+
+    .task-details div {
+        margin-bottom: 6px;
+    }
+
+    .label {
+        font-weight: bold;
+    }
+
+    .comment-box {
+        margin-top: 10px;
+    }
+
+    #taskFormContainer {
+        display: none;
+        position: fixed;
+        top: 5%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        z-index: 1000;
+        width: 95%;
+        max-width: 1000px;
+        max-height: 100%;
+        overflow-y: auto;
+    }
+
+    #overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+    }
+
+    button,
+    .button {
+        transition: background-color 0.3s ease, transform 0.2s ease;
+        background-color: #0000ffda;
+        color: white;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 14px;
+        margin: 4px 2px;
+        text-align: center;
+    }
+
+    .button-red {
+        background-color: #e81313 !important; /* κόκκινο */
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .button-green {
+        background-color: #13b343 !important; /* πράσινο */
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .button:hover {
+        transform: translateY(-1px);
+    }
+
+    h1.title-main {
+        font-size: 2.1em;
+        text-align: center;
+        margin-top: 20px;
+        margin-bottom: 20px;
+        color: #2b2a2a;
+        font-weight: 700;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    h2.section-title {
+        font-size: 1.5em;
+        margin-top: 30px;
+        margin-bottom: 10px;
+        color: #2f2f2f;
+        border-bottom: 2px solid #17a2b8;
+        display: inline-block;
+        padding-bottom: 5px;
+    }
+
+    /* Βελτιωμένη εμφάνιση dropdown */
+    select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-color: #ffffff;
+        border: 1px solid #ced4da;
+        padding: 8px 16px;
+        border-radius: 6px;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+        font-size: 14px;
+        width: 100%;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="gray"><polygon points="0,0 20,0 10,10"/></svg>');
+        background-repeat: no-repeat;
+        background-position: right 10px top 50%;
+        background-size: 10px;
+    }
+
+        /* Hover effect */
+        select:hover {
+            border-color: #18bad3;
+            box-shadow: 0 0 5px rgba(23, 162, 184, 0.4);
+            background-color: #ffffff;
+            cursor: pointer;
+        }
+
+        /* Focus effect */
+        select:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
+        }
+</style>
+  {% endblock %}
+  {% block content %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let currentForm = null;
+
+        document.querySelectorAll('.custom-delete-form').forEach(form => {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                currentForm = this;
+                document.getElementById('confirmModal').style.display = 'block';
+            });
+        });
+
+        document.getElementById('cancelBtn').addEventListener('click', () => {
+            document.getElementById('confirmModal').style.display = 'none';
+            currentForm = null;
+        });
+
+        document.getElementById('confirmBtn').addEventListener('click', () => {
+            if (currentForm) {
+                currentForm.submit();
+            }
+        });
+    });
+
+    function toggleDetails(el, e) {
+        if (e && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.tagName === 'A')) {
+            return;
+        }
+        el.classList.toggle('active');
+    }
+
+    function showForm(isEdit = false) {
+        document.getElementById('overlay').style.display = 'block';
+        document.getElementById('taskFormContainer').style.display = 'block';
+        document.getElementById('taskForm').reset();
+        if (!isEdit) {
+            document.getElementById('taskForm').action = '/add';
+            document.getElementById('task_id').value = '';
+        }
+    }
+
+    function hideForm() {
+        document.getElementById('overlay').style.display = 'none';
+        document.getElementById('taskFormContainer').style.display = 'none';
+    }
+
+    function showFilters() {
+        document.getElementById('filterOverlay').style.display = 'block';
+        document.getElementById('filterPopup').style.display = 'block';
+    }
+
+    function hideFilters() {
+        document.getElementById('filterOverlay').style.display = 'none';
+        document.getElementById('filterPopup').style.display = 'none';
+    }
+
+    function toggleCustomCategory() {
+        const dropdown = document.getElementById('category');
+        if (dropdown.value === '__custom__') {
+            // Καθαρίζουμε το πεδίο εισαγωγής στο modal
+            document.getElementById('custom_category_input').value = '';
+            // Εμφανίζουμε το modal
+            document.getElementById('customCategoryModal').style.display = 'block';
+        }
+    }
+
+    function closeCustomCategoryModal() {
+        document.getElementById('customCategoryModal').style.display = 'none';
+        document.getElementById('category').value = '';  // Reset dropdown
+    }
+
+    function submitCustomCategory() {
+        const value = document.getElementById('custom_category_input').value.trim();
+        const dropdown = document.getElementById('category');
+
+        if (value) {
+            // Αν υπάρχει ήδη option με αυτήν την τιμή, απλά το επιλέγουμε
+            let existing = Array.from(dropdown.options).find(opt => opt.value === value);
+            if (!existing) {
+                // Δημιουργούμε νέο option πριν το "Άλλο..."
+                const newOption = document.createElement('option');
+                newOption.value = value;
+                newOption.textContent = value;
+
+                const otherOption = dropdown.querySelector('option[value="__custom__"]');
+                dropdown.insertBefore(newOption, otherOption);
+            }
+
+            // Κάνουμε selected το νέο option
+            dropdown.value = value;
+
+            // Ενημερώνουμε το κρυφό input για να σταλεί σωστά
+            let hiddenInput = document.getElementById('custom_category');
+            if (!hiddenInput) {
+                hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'custom_category';
+                hiddenInput.id = 'custom_category';
+                document.getElementById('taskForm').appendChild(hiddenInput);
+            }
+            hiddenInput.value = value;
+
+            // Κλείνουμε το modal
+            document.getElementById('customCategoryModal').style.display = 'none';
+        } else {
+            alert("Παρακαλώ συμπληρώστε την κατηγορία.");
+        }
+    }
+
+
+
+    function editTask(task) {
+        showForm(true);
+        document.getElementById('taskForm').action = '/add';  // Προαιρετικό εδώ
+        document.getElementById('task_id').value = task[0].toString();
+        document.getElementById('title').value = task[1];
+        document.getElementById('category').value = task[2];
+        document.getElementById('client').value = task[3];
+        document.getElementById('contact_person').value = task[4];
+        document.getElementById('contact_method').value = task[5];
+        document.getElementById('status').value = task[6];
+        const basicStatuses = ['Filed', 'In Progress', 'Testing', 'Done'];
+        if (basicStatuses.includes(task[7].trim())) {
+            document.getElementById('status_details').value = '';
+        } else {
+            document.getElementById('status_details').value = task[7];
+        }
+        document.getElementById('duration').value = task[8];
+        document.getElementById('assigned_to').value = task[9];
+        document.getElementById('request_date').value = task[10];
+    }
+
+    function advanceStatus(taskId) {
+        const taskCard = document.querySelector(`[onclick*="editTask(${taskId}"]`);
+        const wasActive = taskCard && taskCard.classList.contains("active");
+        fetch(`/advance/${taskId}`)
+            .then(() => {
+                if (wasActive) {
+                    window.location.href = `/?keep_open=${taskId}`;
+                } else {
+                    window.location.reload();
+                }
+            });
+    }
+
+    function saveComment(taskId) {
+        const textarea = document.getElementById(`comment-${taskId}`);
+        const comment = textarea.value;
+
+        fetch(`/comment/${taskId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ comment })
+        }).then(response => {
+            if (response.ok) {
+                alert("✅ Το σχόλιο αποθηκεύτηκε.");
+            } else {
+                alert("❌ Αποτυχία αποθήκευσης σχολίου.");
+            }
+        }).catch(error => {
+            console.error("Σφάλμα:", error);
+            alert("❌ Αποτυχία αποθήκευσης σχολίου.");
+        });
+    }
+    function showHistory(taskId) {
+        fetch(`/task/${taskId}/history`)
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.querySelector("#historyTable tbody");
+                tbody.innerHTML = "";
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;">Δεν υπάρχουν δεδομένα</td></tr>`;
+                } else {
+                    data.forEach(row => {
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            <td style="padding:5px;">${row.status}</td>
+                            <td style="padding:5px;">${row.date}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                document.getElementById("historyModal").style.display = "block";
+            });
+    }
+
+    function closeHistory() {
+        document.getElementById("historyModal").style.display = "none";
+    }
+
+    window.onclick = function (event) {
+        const modal = document.getElementById("historyModal");
+        if (event.target === modal) {
+            closeHistory();
+        }
+    }
+</script>
+
+
+  </script>
+</head>
+<body>
+    <!-- Κουμπί εμφάνισης φίλτρων -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <button class="button" onclick="showFilters()">
+        <i class="fas fa-filter"></i> Φίλτρα
+    </button>
+
+    <!-- Overlay και pop-up φίλτρων -->
+    <div id="filterOverlay" onclick="hideFilters()"></div>
+
+    <div id="filterPopup">
+        <button onclick="hideFilters()" style="
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    border: none;
+    background: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #333;
+  ">
+            ✖
+        </button>
+        <form method="GET">
+            <label>Πελάτης:</label>
+            <select name="client">
+                <option value="">Όλοι</option>
+                {% for c in predefined_clients %}
+                <option value="{{ c }}" {% if request.args.get('client')==c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+
+            <label>Τρέχουσα Κατάσταση:</label>
+            <select name="status">
+                <option value="">Όλες</option>
+                {% for status in ['Filed', 'In Progress', 'Testing', 'Done'] %}
+                <option value="{{ status }}" {% if request.args.get('status')==status %}selected{% endif %}>{{ status }}</option>
+                {% endfor %}
+            </select>
+
+            <label>Κατηγορία:</label>
+            <select name="category">
+                <option value="">Όλες</option>
+                {% for cat in predefined_categories %}
+                <option value="{{ cat }}" {% if request.args.get('category')==cat %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+            </select>
+
+            <div style="margin-top: 20px;">
+                <button type="submit" class="button">Εφαρμογή Φίλτρων</button>
+                <a class="button button-red" href="/">Απαλοιφή Φίλτρων</a>
+            </div>
+        </form>
+    </div>
+
+    <div>
+        <h2 class="section-title">Tasks</h2>
+        <button class="button" onclick="showForm()">
+            <i class="fas fa-plus"></i> Προσθήκη Task
+        </button>
+        {% if show_completed %}
+        <a class="button button-green" href="/">Εμφάνιση Ενεργών</a>
+        {% else %}
+        <a class="button button-green" href="/?show_completed=1">Εμφάνιση Ολοκληρωμένων</a>
+        {% endif %}
+        <a class="button" href="/export" style="background-color: #17a2b8;">
+            <i class="fas fa-file-excel"></i> Export Excel
+        </a>
+        <div class="task-grid">
+            <div class="task-grid-header" style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; font-weight: bold; background-color: #f0f0f0; padding: 8px; border-radius: 8px;">
+                <div>Τίτλος</div>
+                <div>Πελάτης</div>
+                <div>Ανάθεση σε</div>
+                <div>Κατάσταση</div>
+            </div>
+            {% for task in tasks %}
+            <div class="task-card {% if not task[11] %}inactive{% endif %}" onclick="toggleDetails(this, event)" style="padding: 8px;">
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; align-items: center; gap: 10px;">
+                    <div class="task-title">{{ task[1] }}</div> <!-- Τίτλος -->
+                    <div class="task-client">{{ task[3] }}</div> <!-- Πελάτης -->
+                    <div class="task-assigned">{{ task[9] }}</div> <!-- Ανάθεση σε -->
+                    <div class="task-status"><span class="{{ task[6].replace(' ', '') }}">{{ task[6] }}</span></div> <!-- Κατάσταση -->
+                </div>
+
+                <!-- Αν θες να κρατήσεις expandable λεπτομέρειες -->
+                <div class="task-details">
+                    <div><span class="label">Κατηγορία:</span> {{ task[2] }}</div>
+                    <div><span class="label">Αρμόδιος επικοινωνίας:</span> {{ task[4] }}</div>
+                    <div><span class="label">Μέσο επικοινωνίας:</span> {{ task[5] }}</div>
+                    <div><span class="label">Ανάθεση σε:</span> {{ task[9] }}</div>
+                    <div><span class="label">Ημερομηνία Κατάθεσης Αιτήματος:</span> {{ task[10]|format_date }}</div>
+
+                    <!-- Στάδια -->
+                    <div>
+                        <button class="button" onclick="showHistory({{ task[0] }})">
+                            📜 Πορεία αιτήματος
+                        </button> <br>
+                        <div style="margin-bottom: 8px;"></div>
+                        <span class="stage-F">Filed</span>
+                        {% for stage in task[7].split(',') if stage.strip() %}
+                        {% set clean = stage.strip() %}
+                        {% if 'filed' in clean.lower() %}
+                        {% elif 'in progress' in clean.lower() %}
+                        <span class="stage-I">{{ clean }}</span>
+                        {% elif 'testing' in clean.lower() %}
+                        <span class="stage-T">{{ clean }}</span>
+                        {% elif 'done' in clean.lower() %}
+                        <span class="stage-D">{{ clean }}</span>
+                        {% else %}
+                        {{ clean }}
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <!-- Σχόλια -->
+                    <div class="comment-box">
+                        <label>🗨️ Σχόλια:</label>
+                        <textarea id="comment-{{ task[0] }}" rows="2" style="width:100%" placeholder="Προσθήκη σχολίου...">{{ task[12] or '' }}</textarea>
+                        <button class="button" onclick="saveComment({{ task[0] }})" style="margin-top: 6px; background-color: #28a745;">💾 Αποθήκευση Σχολίου</button>
+                    </div>
+
+                    <!-- Κουμπιά -->
+                    <div style="margin-top:10px;">
+                        <button onclick='event.stopPropagation(); editTask({{ task|tojson|safe }})' class="button" style="background-color: #ffc107; color: black;">Επεξεργασία</button>
+                        <form method="POST" action="/delete/{{ task[0] }}" class="custom-delete-form" style="display:inline;">
+                            <button type="submit" class="button" style="background-color: #dc3545;">Διαγραφή</button>
+                        </form>
+                        <button onclick="event.stopPropagation(); advanceStatus({{ task[0] }})" class="button" style="background-color: #17a2b8;">Ενημέρωση Κατάστασης</button>
+                    </div>
+                </div>
+            </div>
+
+            {% endfor %}
+        </div>
+    </div>
+    <div id="overlay" onclick="hideForm()"></div>
+    <div id="taskFormContainer">
+        <form method="POST" id="taskForm" action="/add">
+            <input type="hidden" name="task_id" id="task_id">
+
+            <div><label>Τίτλος:</label><input name="title" id="title" required></div>
+            <div>
+                <label>Πελάτης:</label>
+                <select name="client" id="client">
+                    <option value="">Επιλογή</option>
+                    {% for c in predefined_clients %}
+                    <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>Κατηγορία:</label>
+                <select name="category" id="category" onchange="toggleCustomCategory()" required>
+                    <option value="">Επιλογή</option>
+                    {% for cat in predefined_categories %}
+                    <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                    <option value="__custom__">Άλλο...</option>
+                </select>
+            </div>
+            <div id="custom_category_container" style="display: none;">
+                <label>Άλλο...</label>
+                <input type="text" name="custom_category" id="custom_category" class="custom-input">
+            </div>
+            <div><label>Αρμόδιος επικοινωνίας:</label><input name="contact_person" id="contact_person"></div>
+            <div>
+                <label>Πηγή επικοινωνίας:</label>
+                <select name="contact_method" id="contact_method">
+                    <option value="">Επιλογή</option>
+                    <option value="Email">Email</option>
+                    <option value="Τηλέφωνο">Τηλέφωνο</option>
+                </select>
+            </div>
+            <div>
+                <label>Τρέχουσα Κατάσταση:</label>
+                <select name="status" id="status">
+                    <option value="Filed">Filed</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Testing">Testing</option>
+                    <option value="Done">Done</option>
+                </select>
+            </div>
+            <div><label>Λεπτομέρειες εξέλιξης:</label><textarea name="status_details" id="status_details"></textarea></div>
+            <div><label>Διάρκεια (ώρες):</label><input name="duration" id="duration" type="number" step="0.1"></div>
+            <div>
+                <label>Ανάθεση σε:</label>
+                <select name="assigned_to" id="assigned_to">
+                    <option value="">Επιλογή</option>
+                    <option value="Kainourgios Alexandros">Kainourgios Alexandros</option>
+                    <option value="Gkiokas Nikos">Gkiokas Nikos</option>
+                </select>
+            </div>
+            <div><label>Ημερομηνία αιτήματος:</label><input name="request_date" id="request_date" type="date" value="{{ current_date }}"></div>
+
+            <div>
+                <button class="button" type="submit">Υποβολή</button>
+                <button class="button" type="button" onclick="hideForm()">Ακύρωση</button>
+            </div>
+        </form>
+
+    </div>
+    <div id="historyModal" class="modal">
+        <div class="modal-content" style="width:400px;">
+            <h3>Πορεία αιτήματος</h3>
+            <table id="historyTable" style="width:100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th style="border-bottom:1px solid #ccc; padding:5px;">Κατάσταση</th>
+                        <th style="border-bottom:1px solid #ccc; padding:5px;">Ημερομηνία</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <div style="margin-top:15px; text-align:right;">
+                <button class="button" onclick="closeHistory()">Κλείσιμο</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+{% endblock %}
